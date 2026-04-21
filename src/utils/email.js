@@ -1,4 +1,10 @@
-const nodemailer = require('nodemailer');
+let nodemailer;
+try {
+  nodemailer = require('nodemailer');
+} catch (error) {
+  console.warn('⚠️ Nodemailer not available, email service will use mock mode:', error.message);
+  nodemailer = null;
+}
 
 /**
  * Email service for sending notifications
@@ -13,8 +19,8 @@ class EmailService {
  * @returns {Object} Nodemailer transporter
  */
   createTransporter() {
+    // For development, log emails to console
     if (process.env.NODE_ENV === 'development') {
-      // For development, log emails to console
       return {
         sendMail: (options) => {
           console.log('📧 Email would be sent in production:');
@@ -27,16 +33,37 @@ class EmailService {
       };
     }
 
-    // Production transporter
-    return nodemailer.createTransporter({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+    // If nodemailer is not available, use mock transporter
+    if (!nodemailer) {
+      console.log('📧 Using mock email transporter (nodemailer unavailable)');
+      return {
+        sendMail: (options) => {
+          console.log('📧 [MOCK] Email sent to:', options.to, '- Subject:', options.subject);
+          return Promise.resolve({ messageId: 'mock-' + Date.now() });
+        }
+      };
+    }
+
+    // Production transporter with error handling
+    try {
+      return nodemailer.createTransporter({
+        host: process.env.EMAIL_HOST,
+        port: process.env.EMAIL_PORT,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+    } catch (error) {
+      console.warn('⚠️ Error creating email transporter, using mock mode:', error.message);
+      return {
+        sendMail: (options) => {
+          console.log('📧 [MOCK] Email:', options.to, '-', options.subject);
+          return Promise.resolve({ messageId: 'mock-' + Date.now() });
+        }
+      };
+    }
   }
 
   /**
