@@ -64,6 +64,9 @@ const io = new Server(server, {
 // Store io instance globally for use in other modules
 app.set('io', io);
 
+// Trust proxy - needed for Render and other reverse proxies
+app.set('trust proxy', 1);
+
 // Security middleware - enhanced helmet configuration
 app.use(helmet({
   contentSecurityPolicy: {
